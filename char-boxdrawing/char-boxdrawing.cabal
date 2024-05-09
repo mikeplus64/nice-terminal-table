@@ -1,7 +1,8 @@
 cabal-version: 2.0
 name:          char-boxdrawing
 version:       1
-synopsis:
+synopsis:      Combinators for unicode or ASCII box drawing characters
+description:
   Draw and intersect border characters for text-based drawings
 
 license:       BSD3
