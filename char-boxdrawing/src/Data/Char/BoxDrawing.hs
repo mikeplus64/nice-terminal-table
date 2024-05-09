@@ -13,6 +13,9 @@ module Data.Char.BoxDrawing (
   lookup,
   read,
   overlay,
+  hasSameStyle,
+  hasSameDirections,
+  contains,
 
   -- ** Box drawing styles
   BoxDrawingStyle,
@@ -675,6 +678,9 @@ unicode =
 newtype Drawing = Drawing Word8
   deriving newtype (Eq, Ord)
 
+instance Show Drawing where
+  show d = "Drawing " ++ show (getStyle1 d) ++ " " ++ show (bitsToDrawing d)
+
 instance Semigroup Drawing where
   (<>) a@(Drawing ab) b@(Drawing bb) =
     Drawing ((ab .|. bb) .&. 0x0f) `setStyle1` (getStyle1 a <> getStyle1 b)
@@ -770,3 +776,18 @@ read style ch = fromMaybe mempty (lookup style ch)
 -- drawing and a character.
 overlay :: BoxDrawingStyle -> Drawing -> Char -> Char
 overlay style next cur = render style (read style cur <> next)
+
+-- | Does a drawing contain another?
+contains :: Drawing -> Drawing -> Bool
+contains a b = hasSameStyle a b && hasSameDirections a b
+
+-- | Does a drawing have the same style as another?
+hasSameStyle :: Drawing -> Drawing -> Bool
+hasSameStyle (Drawing a) (Drawing b) = (a `shiftR` 4) == (b `shiftR` 4)
+
+-- | Does a drawing have the same style as another?
+hasSameDirections :: Drawing -> Drawing -> Bool
+hasSameDirections a b = (a' .&. b') == b'
+  where
+    !(Drawing a') = dropStyleBits a
+    !(Drawing b') = dropStyleBits b

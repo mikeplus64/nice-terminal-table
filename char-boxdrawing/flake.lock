@@ -71,24 +71,7 @@
       "inputs": {
         "flake-root": "flake-root",
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs",
-        "streaming-cassava": "streaming-cassava"
-      }
-    },
-    "streaming-cassava": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1696934132,
-        "narHash": "sha256-4Mcp6p8fZRPPRL1QSuSj1wEGjX0rYbJ1X4Gjyt4g6fw=",
-        "owner": "mikeplus64",
-        "repo": "streaming-cassava",
-        "rev": "8ea10cad7e64bfe67a63663232fc1033669d7bae",
-        "type": "github"
-      },
-      "original": {
-        "owner": "mikeplus64",
-        "repo": "streaming-cassava",
-        "type": "github"
+        "nixpkgs": "nixpkgs"
       }
     },
     "systems": {

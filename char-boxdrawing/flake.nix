@@ -19,20 +19,17 @@
       ghc = "ghc946";
 
       hlib = pkgs.haskell.lib;
-      jailbreakUnbreak = pkg: hlib.doJailbreak (pkg.overrideAttrs (_: { meta = { }; }));
-      dontCheck = hlib.dontCheck;
-      appendPatch = hlib.appendPatch;
-
       hp = pkgs.haskell.packages.${ghc}.override {
         overrides = hp: super: {
-          ${packageName} = hp.callCabal2nix packageName self {};
+          ${packageName} = hlib.doCheck (hp.callCabal2nix packageName self {});
         };
       };
 
     in flake-utils.lib.eachSystem [ system ] (system: {
       packages.default = hp.${packageName};
       defaultPackage = self.packages.${system}.default;
-      devShells.default = pkgs.mkShell {
+      devShell = hp.shellFor {
+        packages = hp: [ hp.${packageName} ];
         buildInputs = with pkgs; [
           hp.haskell-language-server
           ghcid
@@ -43,10 +40,7 @@
           cabal2nix
           treefmt
           just
-          fup-repl
         ];
-        inputsFrom = map (__getAttr "env") (__attrValues self.packages.${system});
       };
-      devShell = self.devShells.${system}.default;
     });
 }

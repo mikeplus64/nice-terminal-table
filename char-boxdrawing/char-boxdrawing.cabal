@@ -30,7 +30,7 @@ test-suite char-boxdrawing-test
   hs-source-dirs:   test
   main-is:          Main.hs
   build-depends:
-      base             ^>=4.18.2.0
+      base             >=4.17 && <5
     , char-boxdrawing
     , falsify
     , tasty
