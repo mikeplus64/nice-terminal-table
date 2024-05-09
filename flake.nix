@@ -25,14 +25,21 @@
 
       hp = pkgs.haskell.packages.${ghc}.override {
         overrides = hp: super: {
-          ${packageName} = hp.callCabal2nix packageName self {};
+          nice-terminal-table = hp.callCabal2nix "nice-terminal-table" self {};
+          char-boxdrawing = hp.callCabal2nix "char-boxdrawing" ./char-boxdrawing {};
+          kittyprint = hp.callCabal2nix "kittyprint" ./kittyprint {};
         };
       };
 
     in flake-utils.lib.eachSystem [ system ] (system: {
       packages.default = hp.${packageName};
       defaultPackage = self.packages.${system}.default;
-      devShells.default = pkgs.mkShell {
+      devShell = hp.shellFor {
+        packages = hp: [
+          hp.nice-terminal-table
+          hp.char-boxdrawing
+          hp.kittyprint
+        ];
         buildInputs = with pkgs; [
           hp.haskell-language-server
           ghcid
@@ -43,10 +50,7 @@
           cabal2nix
           treefmt
           just
-          fup-repl
         ];
-        inputsFrom = map (__getAttr "env") (__attrValues self.packages.${system});
       };
-      devShell = self.devShells.${system}.default;
     });
 }
