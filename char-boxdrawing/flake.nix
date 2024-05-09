@@ -5,8 +5,6 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:gytis-ivaskevicius/flake-utils-plus";
     flake-root.url = "github:srid/flake-root";
-    streaming-cassava.url = "github:mikeplus64/streaming-cassava";
-    streaming-cassava.flake = false;
   };
 
   outputs = inputs@{ self, nixpkgs, flake-utils, ... }:
