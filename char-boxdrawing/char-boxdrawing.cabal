@@ -13,6 +13,11 @@ copyright:     2024
 category:      Text
 build-type:    Simple
 
+source-repository head
+  type:     git
+  location: https://github.com/mikeplus64/nice-terminal-table
+  subdir:   char-boxdrawing
+
 library
   exposed-modules:  Data.Char.BoxDrawing
   build-depends:    base >=4.17 && <5

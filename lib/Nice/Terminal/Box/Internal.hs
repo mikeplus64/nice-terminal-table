@@ -3,8 +3,9 @@
 module Nice.Terminal.Box.Internal where
 
 import Data.Bits
-import Data.IntMap qualified as IntMap
+import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
+import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Language.Haskell.TH (ExpQ)
 import Language.Haskell.TH qualified as TH
@@ -27,6 +28,9 @@ boxBorderBit = \case
   BLeft -> 2
   BRight -> 3
 
+-- | A box border which can be rendered to a terminal given a 'BorderStyle'
+--
+-- Use the 'Monoid' and 'Semigroup' instances to combine box borders.
 newtype BoxBorder = BoxBorder Word8
   deriving newtype (Eq, Ord, Enum, Bounded, NFData)
 
@@ -148,12 +152,71 @@ dashed3 = style1 Dashed3
 dashed4 = style1 Dashed4
 rounded = style1 Rounded
 
+-- | A border style such as ASCII or unicode. Describes how to turn a
+-- 'BoxBorder' into an actual character for rendering, or to lookup a character
+-- from a buffer into a 'BoxBorder' for combining different border characters
+--
+-- Construct a 'BorderStyle' with 'mkBorderStyle'
 data BorderStyle = BorderStyle
   { runBorderStyle :: BoxBorder -> Char
   , lookupBorderChar :: Char -> Maybe BoxBorder
   , isBorderChar :: Char -> Bool
   }
 
+-- | Construct an optimised 'BorderStyle' from a list of associations to
+-- characters
+mkBorderStyle :: [(BoxBorder, Char)] -> ExpQ
+mkBorderStyle = optimiseBorderStyle . borderStyleFromAssocs
+
+-- | "Optimise" a 'BorderStyle' by turning it into exhaustive pattern matches on
+-- inputs
+optimiseBorderStyle :: BorderStyle -> ExpQ
+optimiseBorderStyle BorderStyle {runBorderStyle} =
+  [|
+    ( \(run :: Word8 -> Char) (runBack :: Char -> Maybe Word8) (check :: Char -> Bool) ->
+        BorderStyle
+          (coerce run)
+          (coerce runBack)
+          check
+    )
+    |]
+    `TH.appE` borderStyleFn
+    `TH.appE` borderStyleBackFn
+    `TH.appE` isBorderCharFn
+  where
+    blanks = filter ((== ' ') . snd) allMatches
+    matches = filter ((/= ' ') . snd) allMatches
+    allMatches =
+      [ (b, ch) | b <- [minBound .. maxBound], let ch = runBorderStyle (BoxBorder b)
+      ]
+    borderStyleFn =
+      TH.lamCaseE $
+        [ TH.match (TH.litP (TH.integerL (toInteger b))) (TH.normalB (TH.litE (TH.charL ch))) []
+        | (b, ch) <- matches
+        ]
+          ++ [TH.match TH.wildP (TH.normalB (TH.litE (TH.charL ' '))) [] | not (null blanks)]
+    borderStyleBackFn =
+      TH.lamCaseE $
+        [ TH.match
+          (TH.litP (TH.charL ch))
+          (TH.normalB ([|Just|] `TH.appE` TH.litE (TH.integerL (toInteger b))))
+          []
+        | (ch, b) <- Map.toList (Map.fromList (map (\(a, b) -> (b, a)) matches))
+        ]
+          ++ [ TH.match
+              TH.wildP
+              (TH.normalB [|Nothing|])
+              []
+             | not (null blanks)
+             ]
+    isBorderCharFn =
+      TH.lamCaseE $
+        [ TH.match (TH.litP (TH.charL ch)) (TH.normalB [|True|]) []
+        | ch <- Set.toList (Set.fromList (map snd matches))
+        ]
+          ++ [TH.match TH.wildP (TH.normalB [|False|]) []]
+
+-- | Create a 'BorderStyle' from a list of associations
 borderStyleFromAssocs :: [(BoxBorder, Char)] -> BorderStyle
 borderStyleFromAssocs list =
   let
@@ -177,53 +240,3 @@ borderStyleFromAssocs list =
         , lookupBorderChar = \c -> assocsBack ^. at (fromEnum c)
         , isBorderChar = \c -> fromEnum c `IntSet.member` chars
         }
-
--- | Construct an optimised 'BorderStyle' from a list of associations
-mkBorderStyle :: [(BoxBorder, Char)] -> ExpQ
-mkBorderStyle = optimiseBorderStyle . borderStyleFromAssocs
-  where
-    optimiseBorderStyle :: BorderStyle -> ExpQ
-    optimiseBorderStyle BorderStyle {runBorderStyle} =
-      [|
-        ( \(run :: Word8 -> Char) (runBack :: Char -> Maybe Word8) (check :: Char -> Bool) ->
-            BorderStyle
-              (coerce run)
-              (coerce runBack)
-              check
-        )
-        |]
-        `TH.appE` borderStyleFn
-        `TH.appE` borderStyleBackFn
-        `TH.appE` isBorderCharFn
-      where
-        blanks = filter ((== ' ') . snd) allMatches
-        matches = filter ((/= ' ') . snd) allMatches
-        allMatches =
-          [ (b, ch) | b <- [minBound .. maxBound], let ch = runBorderStyle (BoxBorder b)
-          ]
-        borderStyleFn =
-          TH.lamCaseE $
-            [ TH.match (TH.litP (TH.integerL (toInteger b))) (TH.normalB (TH.litE (TH.charL ch))) []
-            | (b, ch) <- matches
-            ]
-              ++ [TH.match TH.wildP (TH.normalB (TH.litE (TH.charL ' '))) [] | not (null blanks)]
-        borderStyleBackFn =
-          TH.lamCaseE $
-            [ TH.match
-              (TH.litP (TH.charL ch))
-              (TH.normalB ([|Just|] `TH.appE` TH.litE (TH.integerL (toInteger b))))
-              []
-            | (b, ch) <- matches
-            ]
-              ++ [ TH.match
-                  TH.wildP
-                  (TH.normalB [|Nothing|])
-                  []
-                 | not (null blanks)
-                 ]
-        isBorderCharFn =
-          TH.lamCaseE $
-            [ TH.match (TH.litP (TH.charL ch)) (TH.normalB [|True|]) []
-            | ch <- Set.toList (Set.map snd (Set.fromList matches))
-            ]
-              ++ [TH.match TH.wildP (TH.normalB [|False|]) []]

@@ -3,10 +3,10 @@ module Nice.Terminal.Box.BorderStyles (
   BoxBorder,
   asciiBorders,
   unicodeBorders,
-  runBorderStyle,
-  lookupBorderChar,
   isBorderChar,
-  combineBorders,
+  readBorderChar,
+  lookupBorderChar,
+  runBorderStyle,
   -- * Borders
   up,
   down,
@@ -37,10 +37,8 @@ module Nice.Terminal.Box.BorderStyles (
 
 import Nice.Terminal.Box.Internal
 
-combineBorders :: BorderStyle -> Char -> BoxBorder -> Char
-combineBorders style a fb = fromMaybe (runBorderStyle style fb) do
-  fa <- lookupBorderChar style a
-  pure (runBorderStyle style (fa <> fb))
+readBorderChar :: BorderStyle -> Char -> BoxBorder
+readBorderChar style ch = fromMaybe mempty (lookupBorderChar style ch)
 
 asciiBorders :: BorderStyle
 asciiBorders =
@@ -81,7 +79,6 @@ unicodeBorders =
       , (heavy <> down, '╻')
       , (heavy <> left, '╸')
       , (heavy <> right, '╺')
-
       , (heavy <> cornerTL, '┏')
       , (heavy <> cornerTR, '┓')
       , (heavy <> cornerBR, '┛')
@@ -93,8 +90,6 @@ unicodeBorders =
       , (heavy <> intersectB, '┻')
       , (heavy <> horizontal, '━')
       , (heavy <> vertical, '┃')
-
-
       , (heavyHoriz <> cornerTL, '┍')
       , (heavyHoriz <> cornerTR, '┑')
       , (heavyHoriz <> cornerBR, '┙')
@@ -105,7 +100,6 @@ unicodeBorders =
       , (heavyHoriz <> intersectT, '┯')
       , (heavyHoriz <> intersectB, '┷')
       , (heavyHoriz <> horizontal, '━')
-
       , (heavyVert <> cornerTL, '┎')
       , (heavyVert <> cornerTR, '┒')
       , (heavyVert <> cornerBR, '┚')
@@ -116,7 +110,6 @@ unicodeBorders =
       , (heavyVert <> intersectT, '┰')
       , (heavyVert <> intersectB, '┸')
       , (heavyVert <> vertical, '┃')
-
       , (rounded <> cornerTL, '╭')
       , (rounded <> cornerTR, '╮')
       , (rounded <> cornerBR, '╯')
