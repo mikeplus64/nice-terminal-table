@@ -1,9 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use pass" #-}
-{-# HLINT ignore "Use toString" #-}
-
 module KittyPrint (
   printQDiagram,
   prettyPrint,
@@ -14,24 +8,23 @@ module KittyPrint (
   SPrintCellBehaviour (..),
 ) where
 
-import BasePrelude
 import Codec.Picture (encodePng)
-import Control.Lens
 import Data.ByteString.Lazy qualified as L
+import Data.Foldable (toList)
 import Data.IntMap.Strict qualified as IntMap
+import Data.List
 import Data.Map.Strict qualified as Map
 import Data.Monoid (Any)
 import Data.Text qualified as T
+import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Lazy qualified as TL
 import Data.Typeable
 import Diagrams hiding (V)
 import Diagrams.Backend.Rasterific
-import GHC.TypeLits (KnownNat, KnownSymbol, Symbol, symbolVal)
+import GHC.IsList (IsList (..))
+import GHC.TypeLits (KnownNat, KnownSymbol, Symbol, natVal, symbolVal)
 import Graphics.Rendering.Chart.Backend.Diagrams qualified as Chart
 import Graphics.Rendering.Chart.Easy qualified as Chart
-import Linear.V as V
-import Relude (fromList, natVal, toList)
-import Relude.String.Conversion (decodeUtf8)
 import System.Process.Typed as Proc
 import Text.Layout.Table (columnHeaderTableS, def, rowsG, tableLines, titlesH, unicodeS)
 import Text.Pretty.Simple (pPrint)
@@ -62,8 +55,8 @@ type family PrintBehaviour a where
   PrintBehaviour (Map.Map k v) = PrintMapAsTable
   PrintBehaviour (IntMap.IntMap v) = PrintMapAsTable
   PrintBehaviour [(k, v)] = PrintListAsTable "fst" (PrintCellBehaviour k) "snd" (PrintCellBehaviour v)
-  PrintBehaviour (V n String, [V n a]) = PrintVectors (PrintCellBehaviour a)
-  PrintBehaviour [V n a] = PrintVectors (PrintCellBehaviour a)
+  -- PrintBehaviour (V n String, [V n a]) = PrintVectors (PrintCellBehaviour a)
+  -- PrintBehaviour [V n a] = PrintVectors (PrintCellBehaviour a)
   PrintBehaviour [v] = PrintList "Value" (PrintCellBehaviour v)
   PrintBehaviour _ = PrintOpen
 
@@ -118,24 +111,24 @@ instance (PrettyPrintCell k kb, PrettyPrintCell a ab) => PrettyPrintBy (Map.Map 
 instance (PrettyPrintCell a ab) => PrettyPrintBy (IntMap.IntMap a) PrintMapAsTable where
   prettyPrintBy _ = prettyPrintBy (Proxy :: Proxy (PrintListAsTable "Key" PrintCellShow "Value" ab)) . IntMap.toList
 
-instance (KnownNat n, PrettyPrintCell a ab, Show a, s ~ String) => PrettyPrintBy (V n s, [V n a]) (PrintVectors ab) where
-  prettyPrintBy _ (titles, list) =
-    mapM_ putStrLn
-      . tableLines
-      $ columnHeaderTableS
-        (map (const def) (toList titles))
-        unicodeS
-        (titlesH (toList titles))
-        [ rowsG (map (map (prettyPrintCellBy (Proxy :: Proxy ab)) . toList) list)
-        ]
+-- instance (KnownNat n, PrettyPrintCell a ab, Show a, s ~ String) => PrettyPrintBy (V n s, [V n a]) (PrintVectors ab) where
+--   prettyPrintBy _ (titles, list) =
+--     mapM_ putStrLn
+--       . tableLines
+--       $ columnHeaderTableS
+--         (map (const def) (toList titles))
+--         unicodeS
+--         (titlesH (toList titles))
+--         [ rowsG (map (map (prettyPrintCellBy (Proxy :: Proxy ab)) . toList) list)
+--         ]
 
-instance (KnownNat n, PrettyPrintCell a ab, Show a) => PrettyPrintBy [V n a] (PrintVectors ab) where
-  prettyPrintBy _ list = prettyPrintBy (Proxy :: Proxy (PrintVectors ab)) (titles, list)
-    where
-      titles :: V n String
-      titles =
-        V.fromVector (fromList (map show [0 .. natVal (Proxy :: Proxy n) - 1]))
-          ^?! _Just
+-- instance (KnownNat n, PrettyPrintCell a ab, Show a) => PrettyPrintBy [V n a] (PrintVectors ab) where
+--   prettyPrintBy _ list = prettyPrintBy (Proxy :: Proxy (PrintVectors ab)) (titles, list)
+--     where
+--       titles :: V n String
+--       titles =
+--         V.fromVector (fromList (map show [0 .. natVal (Proxy :: Proxy n) - 1]))
+--           ^?! _Just
 
 instance
   ( KnownSymbol klabel
