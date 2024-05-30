@@ -1,3 +1,6 @@
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module KittyPrint (
   printQDiagram,
   prettyPrint,
@@ -16,8 +19,8 @@ import Data.List
 import Data.Map.Strict qualified as Map
 import Data.Monoid (Any)
 import Data.Text qualified as T
-import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Typeable
 import Diagrams hiding (V)
 import Diagrams.Backend.Rasterific
@@ -42,7 +45,7 @@ printQDiagram dia = do
 getImageSize :: (Read n, RealFloat n, Typeable n) => IO (SizeSpec V2 n)
 getImageSize = do
   (ExitSuccess, sizeBs) <- readProcessStdout "kitty +kitten icat --print-window-size"
-  let !(w, h) = case map (read . decodeUtf8) (L.split 120 {- x -} sizeBs) of
+  let !(w, h) = case map (read . TL.unpack . decodeUtf8) (L.split 120 {- x -} sizeBs) of
         [w_, h_] -> (w_, h_)
         _ -> error "could not get window size from kitty"
   pure (dims2D (w * 0.8) (min (w * 0.8 * (3 / 4)) (h * 0.6)))
@@ -96,14 +99,8 @@ runChartEC chart = do
 instance (Chart.Default r, Chart.ToRenderable r) => PrettyPrintBy (Chart.EC r a) PrintDiagramInferDouble where
   prettyPrintBy _ chart = prettyPrintBy (Proxy :: Proxy PrintDiagramInferDouble) =<< runChartEC chart
 
-instance (PrettyPrintOpen a, PrintBehaviour a ~ PrintOpen) => PrettyPrintBy a PrintOpen where
-  prettyPrintBy _ = prettyPrintOpen
-
-class PrettyPrintOpen a where
-  prettyPrintOpen :: a -> IO ()
-
-instance {-# OVERLAPPABLE #-} (Show a) => PrettyPrintOpen a where
-  prettyPrintOpen = pPrint
+instance (Show a, PrintBehaviour a ~ PrintOpen) => PrettyPrintBy a PrintOpen where
+  prettyPrintBy _ = pPrint
 
 instance (PrettyPrintCell k kb, PrettyPrintCell a ab) => PrettyPrintBy (Map.Map k a) PrintMapAsTable where
   prettyPrintBy _ = prettyPrintBy (Proxy :: Proxy (PrintListAsTable "Key" kb "Value" ab)) . Map.toList
